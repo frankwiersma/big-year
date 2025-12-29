@@ -14,6 +14,8 @@ export default function HomePage() {
   const [selectedCalendarIds, setSelectedCalendarIds] = useState<string[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const [calendarColors, setCalendarColors] = useState<Record<string, string>>({});
+  const [hiddenEventIds, setHiddenEventIds] = useState<string[]>([]);
+  const [showHidden, setShowHidden] = useState<boolean>(false);
   const calendarsByEmail = useMemo(() => {
     const map = new Map<string, typeof calendars>();
     for (const c of calendars) {
@@ -38,6 +40,25 @@ export default function HomePage() {
     }
     return map;
   }, [calendars]);
+
+  // Load hidden events from storage
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem("hiddenEventIds") || "[]");
+      if (Array.isArray(stored)) setHiddenEventIds(stored);
+    } catch {}
+  }, []);
+  // Persist hidden events
+  useEffect(() => {
+    try {
+      localStorage.setItem("hiddenEventIds", JSON.stringify(hiddenEventIds));
+    } catch {}
+  }, [hiddenEventIds]);
+
+  const visibleEvents = useMemo(() => {
+    if (showHidden) return events;
+    return events.filter((e) => !hiddenEventIds.includes(e.id));
+  }, [events, hiddenEventIds, showHidden]);
 
   useEffect(() => {
     if (status !== "authenticated") {
@@ -284,6 +305,17 @@ export default function HomePage() {
               ) : (
                 <div className="text-sm text-muted-foreground p-2">Sign in to manage calendars.</div>
               )}
+              {status === "authenticated" && hiddenEventIds.length > 0 && (
+                <label className="px-2 pt-2 flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="accent-foreground"
+                    checked={showHidden}
+                    onChange={(e) => setShowHidden(e.target.checked)}
+                  />
+                  <span>Show hidden events</span>
+                </label>
+              )}
               {status === "authenticated" && calendars.length === 0 && (
                 <div className="text-sm text-muted-foreground p-2">No calendars</div>
               )}
@@ -322,11 +354,16 @@ export default function HomePage() {
       <div className="flex-1 min-h-0">
         <YearCalendar
           year={year}
-          events={events}
+          events={visibleEvents}
           signedIn={status === "authenticated"}
           calendarColors={calendarColors}
           calendarNames={calendarNames}
           calendarAccounts={calendarAccounts}
+          onHideEvent={(id) => {
+            setHiddenEventIds((prev) =>
+              prev.includes(id) ? prev : [...prev, id]
+            );
+          }}
         />
       </div>
     </div>

@@ -105,6 +105,7 @@ export function YearCalendar({
   calendarColors = {},
   calendarNames = {},
   calendarAccounts = {},
+  onHideEvent,
 }: {
   year: number;
   events: AllDayEvent[];
@@ -112,6 +113,7 @@ export function YearCalendar({
   calendarColors?: Record<string, string>;
   calendarNames?: Record<string, string>;
   calendarAccounts?: Record<string, string>;
+  onHideEvent?: (id: string) => void;
 }) {
   const todayKey = formatDateKey(new Date());
   const dateMap = useMemo(() => expandEventsToDateMap(events), [events]);
@@ -436,6 +438,19 @@ export function YearCalendar({
                 popover.event.endDate
               )}
             </span>
+          </div>
+          <div className="px-3 pb-3">
+            <button
+              className="rounded border px-2 py-1 text-xs hover:bg-accent hover:text-accent-foreground transition"
+              onClick={() => {
+                if (onHideEvent && popover.event) {
+                  onHideEvent(popover.event.id);
+                }
+                setPopover({ event: null, x: 0, y: 0 });
+              }}
+            >
+              Hide event
+            </button>
           </div>
         </div>
       )}
