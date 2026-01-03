@@ -1,7 +1,12 @@
 "use client";
 import React, { useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { Calendar as CalendarIcon, X } from "lucide-react";
+import {
+  Calendar as CalendarIcon,
+  X,
+  MoreHorizontal,
+  Plus,
+} from "lucide-react";
 import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import {
@@ -205,6 +210,10 @@ export function YearCalendar({
   const [editHasEndDate, setEditHasEndDate] = React.useState<boolean>(false);
   const [editEndDate, setEditEndDate] = React.useState<string>("");
   const [isSubmitting, setIsSubmitting] = React.useState<boolean>(false);
+  const [menuOpen, setMenuOpen] = React.useState<boolean>(false);
+  const menuRef = React.useRef<HTMLDivElement | null>(null);
+  const editStartDateInputRef = React.useRef<HTMLInputElement | null>(null);
+  const editEndDateInputRef = React.useRef<HTMLInputElement | null>(null);
 
   // Important for hydration: start with a deterministic server/client match,
   // then compute real columns after mount to avoid style mismatches.
@@ -248,16 +257,24 @@ export function YearCalendar({
         if (!popoverRef.current.contains(e.target)) {
           setPopover({ event: null, x: 0, y: 0 });
           setIsEditing(false);
+          setMenuOpen(false);
         }
       } else {
         setPopover({ event: null, x: 0, y: 0 });
         setIsEditing(false);
+        setMenuOpen(false);
+      }
+      if (menuRef.current && e.target instanceof Node) {
+        if (!menuRef.current.contains(e.target)) {
+          setMenuOpen(false);
+        }
       }
     }
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
         setPopover({ event: null, x: 0, y: 0 });
         setIsEditing(false);
+        setMenuOpen(false);
       }
     }
     document.addEventListener("mousedown", onDocMouseDown);
@@ -266,7 +283,7 @@ export function YearCalendar({
       document.removeEventListener("mousedown", onDocMouseDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [popover.event]);
+  }, [popover.event, menuOpen]);
 
   React.useEffect(() => {
     if (popover.event && !isEditing) {
@@ -509,140 +526,192 @@ export function YearCalendar({
           ])}
         </div>
       </div>
-      {popover.event && (
-        <div
-          ref={popoverRef}
-          className="fixed z-50 w-80 max-w-[90vw] rounded-md border bg-card shadow-lg"
-          style={{
-            top: popover.y,
-            left: popover.x,
-            transform: "translateX(-50%)",
-          }}
-          role="dialog"
-          aria-label={isEditing ? "Edit event" : "Event details"}
-        >
-          {isEditing ? (
-            <>
-              <div className="px-3 py-2 border-b flex items-center justify-between">
-                <div className="font-medium">Edit event</div>
+      {popover.event && isEditing && (
+        <>
+          <div
+            className="fixed inset-0 bg-background/60 z-40"
+            onClick={() => {
+              if (!isSubmitting) {
+                setIsEditing(false);
+              }
+            }}
+            aria-hidden
+          />
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
+            role="dialog"
+            aria-label="Edit event"
+          >
+            <div
+              ref={popoverRef}
+              className="rounded-md border bg-card shadow-lg pointer-events-auto w-full max-w-md"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+                <div className="font-semibold">Edit event</div>
                 <button
-                  className="text-muted-foreground hover:text-foreground text-xl leading-none"
+                  className="text-muted-foreground hover:text-foreground flex-shrink-0 ml-2"
                   onClick={() => setIsEditing(false)}
                   disabled={isSubmitting}
-                  aria-label="Cancel"
+                  aria-label="Close"
                 >
-                  ×
+                  <X className="h-4 w-4" />
                 </button>
               </div>
-              <div className="p-3 space-y-3">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Title</label>
+              <div className="px-4 pt-2 pb-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-muted-foreground">
+                    <Plus className="h-4 w-4" />
+                  </div>
                   <input
-                    className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
+                    className="flex-1 border-0 bg-transparent px-0 py-1 text-sm focus:outline-none focus:ring-0 placeholder:text-muted-foreground"
+                    placeholder="Event title"
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
                     disabled={isSubmitting}
                     autoFocus
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Start date</label>
-                  <input
-                    type="date"
-                    className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
-                    value={editStartDate}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setEditStartDate(v);
-                      if (
-                        editHasEndDate &&
-                        editEndDate &&
-                        v &&
-                        editEndDate < v
-                      ) {
-                        setEditEndDate(v);
-                      }
-                    }}
-                    disabled={isSubmitting}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={editHasEndDate}
-                      onChange={(e) => {
-                        const on = e.target.checked;
-                        setEditHasEndDate(on);
-                        if (on && !editEndDate) setEditEndDate(editStartDate);
-                        if (!on) setEditEndDate("");
-                      }}
-                      disabled={isSubmitting}
-                    />
-                    <span className="font-medium">Add end date</span>
-                  </label>
-                  {editHasEndDate && (
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-medium">End date</label>
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-muted-foreground">
+                    <CalendarIcon className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 flex items-center justify-between">
+                    <div className="flex items-center">
                       <input
+                        ref={editStartDateInputRef}
                         type="date"
-                        className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
-                        value={editEndDate}
-                        min={editStartDate || undefined}
-                        onChange={(e) => setEditEndDate(e.target.value)}
+                        className="border-0 bg-transparent px-0 py-1 text-sm focus:outline-none focus:ring-0 w-24 [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+                        value={editStartDate}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setEditStartDate(v);
+                          if (
+                            editHasEndDate &&
+                            editEndDate &&
+                            v &&
+                            editEndDate < v
+                          ) {
+                            setEditEndDate(v);
+                          }
+                        }}
+                        onClick={(e) => {
+                          e.currentTarget.showPicker?.();
+                          e.currentTarget.focus();
+                        }}
                         disabled={isSubmitting}
                       />
+                      {editHasEndDate && (
+                        <>
+                          <span className="text-muted-foreground">–</span>
+                          <input
+                            ref={editEndDateInputRef}
+                            type="date"
+                            className="border-0 bg-transparent px-0 py-1 text-sm focus:outline-none focus:ring-0 ml-2 [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+                            value={editEndDate}
+                            min={editStartDate || undefined}
+                            onChange={(e) => setEditEndDate(e.target.value)}
+                            onClick={(e) => {
+                              e.currentTarget.showPicker?.();
+                              e.currentTarget.focus();
+                            }}
+                            disabled={isSubmitting}
+                          />
+                        </>
+                      )}
                     </div>
-                  )}
+                    {editHasEndDate ? (
+                      <button
+                        type="button"
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                        onClick={() => {
+                          setEditHasEndDate(false);
+                          setEditEndDate("");
+                        }}
+                        disabled={isSubmitting}
+                      >
+                        Remove
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                        onClick={() => {
+                          setEditHasEndDate(true);
+                          if (!editEndDate) setEditEndDate(editStartDate);
+                        }}
+                        disabled={isSubmitting}
+                      >
+                        Add end date
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Calendar</label>
-                  <Select
-                    value={editCalendarId}
-                    onValueChange={setEditCalendarId}
-                    disabled={isSubmitting}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a calendar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {writableAccountsWithCalendars.length > 0
-                        ? writableAccountsWithCalendars.map(
-                            ({ accountId, email, list }) => (
-                              <SelectGroup key={accountId || email}>
-                                <SelectLabel>
-                                  {email && email.length
-                                    ? email
-                                    : accountId || "Account"}
-                                </SelectLabel>
-                                {list.map((c) => (
-                                  <SelectItem key={c.id} value={c.id}>
-                                    {c.summary}
-                                  </SelectItem>
-                                ))}
-                              </SelectGroup>
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
+                    {editCalendarId && calendarColors[editCalendarId] ? (
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{
+                          backgroundColor: calendarColors[editCalendarId],
+                        }}
+                      />
+                    ) : (
+                      <div className="w-3 h-3 rounded-full bg-muted" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <Select
+                      value={editCalendarId}
+                      onValueChange={setEditCalendarId}
+                      disabled={isSubmitting}
+                    >
+                      <SelectTrigger className="w-full border-0 bg-transparent px-0 py-1 h-auto shadow-none focus:ring-0 justify-start gap-1">
+                        <SelectValue placeholder="Select a calendar">
+                          {editCalendarId && calendarNames[editCalendarId]
+                            ? calendarNames[editCalendarId]
+                            : "Select a calendar"}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {writableAccountsWithCalendars.length > 0
+                          ? writableAccountsWithCalendars.map(
+                              ({ accountId, email, list }) => (
+                                <SelectGroup key={accountId || email}>
+                                  <SelectLabel>
+                                    {email && email.length
+                                      ? email
+                                      : accountId || "Account"}
+                                  </SelectLabel>
+                                  {list.map((c) => (
+                                    <SelectItem key={c.id} value={c.id}>
+                                      {c.summary}
+                                    </SelectItem>
+                                  ))}
+                                </SelectGroup>
+                              )
                             )
-                          )
-                        : writableCalendars.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>
-                              {(c.accountEmail ? `${c.accountEmail} — ` : "") +
-                                c.summary}
-                            </SelectItem>
-                          ))}
-                    </SelectContent>
-                  </Select>
+                          : writableCalendars.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {(c.accountEmail
+                                  ? `${c.accountEmail} — `
+                                  : "") + c.summary}
+                              </SelectItem>
+                            ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
-              <div className="px-3 pb-3 border-t flex items-center justify-end gap-2 pt-3">
-                <button
-                  className="rounded border px-2 py-1 text-xs hover:bg-accent hover:text-accent-foreground transition"
+              <div className="p-4 border-t flex items-center justify-end gap-2">
+                <Button
+                  variant="outline"
                   onClick={() => setIsEditing(false)}
                   disabled={isSubmitting}
                 >
                   Cancel
-                </button>
-                <button
-                  className="rounded border bg-primary text-primary-foreground px-2 py-1 text-xs hover:bg-primary/90 transition"
+                </Button>
+                <Button
                   onClick={async () => {
                     if (!popover.event || !onUpdateEvent) return;
                     if (!editTitle.trim()) {
@@ -678,102 +747,261 @@ export function YearCalendar({
                       setIsSubmitting(false);
                     }
                   }}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !editTitle.trim()}
                 >
                   {isSubmitting ? "Saving…" : "Save"}
-                </button>
+                </Button>
               </div>
-            </>
-          ) : (
-            <>
-              <div className="px-3 py-2 flex items-center justify-between">
-                <div className="font-medium truncate flex-1">
-                  {popover.event.summary}
-                </div>
+            </div>
+          </div>
+        </>
+      )}
+      {popover.event && !isEditing && (
+        <div
+          ref={popoverRef}
+          className="fixed z-50 w-80 max-w-[90vw] rounded-md border bg-card shadow-lg"
+          style={{
+            top: popover.y,
+            left: popover.x,
+            transform: "translateX(-50%)",
+          }}
+          role="dialog"
+          aria-label="Event details"
+        >
+          <div className="px-3 py-2 flex items-center justify-between">
+            <div className="font-medium truncate flex-1">
+              {popover.event.summary}
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="relative" ref={menuRef}>
                 <button
-                  className="text-muted-foreground hover:text-foreground flex-shrink-0 ml-2"
-                  onClick={() => setPopover({ event: null, x: 0, y: 0 })}
-                  aria-label="Close"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-              <div className="px-3 text-sm text-muted-foreground flex items-center gap-2">
-                <span
-                  className="inline-block h-2.5 w-2.5 rounded-full"
-                  style={{
-                    backgroundColor:
-                      (popover.event.calendarId &&
-                        calendarColors[popover.event.calendarId]) ||
-                      "hsl(var(--secondary))",
+                  className="text-muted-foreground hover:text-foreground flex-shrink-0 p-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMenuOpen(!menuOpen);
                   }}
-                />
-                <span className="truncate">
-                  {(popover.event.calendarId &&
-                    calendarNames[popover.event.calendarId]) ||
-                    "Calendar"}
-                  {popover.event.calendarId &&
-                    calendarAccounts &&
-                    calendarAccounts[popover.event.calendarId] && (
-                      <span className="ml-1 text-muted-foreground">
-                        ({calendarAccounts[popover.event.calendarId]})
-                      </span>
+                  aria-label="More options"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </button>
+                {menuOpen && (
+                  <div className="absolute right-0 top-full mt-1 w-48 bg-card border rounded-md shadow-lg z-50 py-1">
+                    {onUpdateEvent && writableCalendars.length > 0 && (
+                      <button
+                        className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground transition"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsEditing(true);
+                          setMenuOpen(false);
+                        }}
+                      >
+                        Edit
+                      </button>
                     )}
-                </span>
-              </div>
-              <div className="px-3 pb-3 mt-1.5 text-sm text-muted-foreground flex items-center gap-2">
-                <CalendarIcon className="h-2.5 w-2.5" />
-                <span>
-                  {formatDisplayRange(
-                    popover.event.startDate,
-                    popover.event.endDate
-                  )}
-                </span>
-              </div>
-              <div className="px-3 pb-3 flex items-center gap-2 flex-wrap">
-                {onUpdateEvent && writableCalendars.length > 0 && (
-                  <button
-                    className="rounded border px-2 py-1 text-xs hover:bg-accent hover:text-accent-foreground transition"
-                    onClick={() => setIsEditing(true)}
-                  >
-                    Edit
-                  </button>
-                )}
-                <button
-                  className="rounded border px-2 py-1 text-xs hover:bg-accent hover:text-accent-foreground transition"
-                  onClick={() => {
-                    if (onHideEvent && popover.event) {
-                      onHideEvent(popover.event.id);
-                    }
-                    setPopover({ event: null, x: 0, y: 0 });
-                  }}
-                >
-                  Hide event
-                </button>
-                {onDeleteEvent && popover.event && (
-                  <button
-                    className="rounded border border-destructive text-destructive px-2 py-1 text-xs hover:bg-destructive hover:text-destructive-foreground transition"
-                    onClick={async () => {
-                      const id = popover.event?.id;
-                      if (!id) return;
-                      const ok =
-                        typeof window !== "undefined"
-                          ? window.confirm("Delete this event?")
-                          : true;
-                      if (!ok) return;
-                      try {
-                        await onDeleteEvent(id);
-                      } finally {
+                    <button
+                      className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground transition"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onHideEvent && popover.event) {
+                          onHideEvent(popover.event.id);
+                        }
                         setPopover({ event: null, x: 0, y: 0 });
-                      }
-                    }}
-                  >
-                    Delete event
-                  </button>
+                        setMenuOpen(false);
+                      }}
+                    >
+                      Hide event
+                    </button>
+                    {onDeleteEvent && popover.event && (
+                      <button
+                        className="w-full text-left px-3 py-1.5 text-sm text-destructive hover:bg-destructive hover:text-destructive-foreground transition"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          const id = popover.event?.id;
+                          if (!id) return;
+                          const ok =
+                            typeof window !== "undefined"
+                              ? window.confirm("Delete this event?")
+                              : true;
+                          if (!ok) return;
+                          try {
+                            await onDeleteEvent(id);
+                          } finally {
+                            setPopover({ event: null, x: 0, y: 0 });
+                            setMenuOpen(false);
+                          }
+                        }}
+                      >
+                        Delete event
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
-            </>
-          )}
+              <button
+                className="text-muted-foreground hover:text-foreground flex-shrink-0 p-1"
+                onClick={() => setPopover({ event: null, x: 0, y: 0 })}
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+          <div className="px-3 text-sm text-muted-foreground flex items-center gap-2">
+            <span
+              className="inline-block h-2.5 w-2.5 rounded-full"
+              style={{
+                backgroundColor:
+                  (popover.event.calendarId &&
+                    calendarColors[popover.event.calendarId]) ||
+                  "hsl(var(--secondary))",
+              }}
+            />
+            <span className="truncate">
+              {(popover.event.calendarId &&
+                calendarNames[popover.event.calendarId]) ||
+                "Calendar"}
+              {popover.event.calendarId &&
+                calendarAccounts &&
+                calendarAccounts[popover.event.calendarId] && (
+                  <span className="ml-1 text-muted-foreground">
+                    ({calendarAccounts[popover.event.calendarId]})
+                  </span>
+                )}
+            </span>
+          </div>
+          <div className="px-3 pb-3 mt-1.5 text-sm text-muted-foreground flex items-center gap-2">
+            <CalendarIcon className="h-2.5 w-2.5" />
+            <span>
+              {formatDisplayRange(
+                popover.event.startDate,
+                popover.event.endDate
+              )}
+            </span>
+          </div>
+        </div>
+      )}
+      {popover.event && !isEditing && (
+        <div
+          ref={popoverRef}
+          className="fixed z-50 w-80 max-w-[90vw] rounded-md border bg-card shadow-lg"
+          style={{
+            top: popover.y,
+            left: popover.x,
+            transform: "translateX(-50%)",
+          }}
+          role="dialog"
+          aria-label="Event details"
+        >
+          <div className="px-3 py-2 flex items-center justify-between">
+            <div className="font-medium truncate flex-1">
+              {popover.event.summary}
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="relative" ref={menuRef}>
+                <button
+                  className="text-muted-foreground hover:text-foreground flex-shrink-0 p-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMenuOpen(!menuOpen);
+                  }}
+                  aria-label="More options"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </button>
+                {menuOpen && (
+                  <div className="absolute right-0 top-full mt-1 w-48 bg-card border rounded-md shadow-lg z-50 py-1">
+                    {onUpdateEvent && writableCalendars.length > 0 && (
+                      <button
+                        className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground transition"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsEditing(true);
+                          setMenuOpen(false);
+                        }}
+                      >
+                        Edit
+                      </button>
+                    )}
+                    <button
+                      className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground transition"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onHideEvent && popover.event) {
+                          onHideEvent(popover.event.id);
+                        }
+                        setPopover({ event: null, x: 0, y: 0 });
+                        setMenuOpen(false);
+                      }}
+                    >
+                      Hide event
+                    </button>
+                    {onDeleteEvent && popover.event && (
+                      <button
+                        className="w-full text-left px-3 py-1.5 text-sm text-destructive hover:bg-destructive hover:text-destructive-foreground transition"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          const id = popover.event?.id;
+                          if (!id) return;
+                          const ok =
+                            typeof window !== "undefined"
+                              ? window.confirm("Delete this event?")
+                              : true;
+                          if (!ok) return;
+                          try {
+                            await onDeleteEvent(id);
+                          } finally {
+                            setPopover({ event: null, x: 0, y: 0 });
+                            setMenuOpen(false);
+                          }
+                        }}
+                      >
+                        Delete event
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+              <button
+                className="text-muted-foreground hover:text-foreground flex-shrink-0 p-1"
+                onClick={() => setPopover({ event: null, x: 0, y: 0 })}
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+          <div className="px-3 text-sm text-muted-foreground flex items-center gap-2">
+            <span
+              className="inline-block h-2.5 w-2.5 rounded-full"
+              style={{
+                backgroundColor:
+                  (popover.event.calendarId &&
+                    calendarColors[popover.event.calendarId]) ||
+                  "hsl(var(--secondary))",
+              }}
+            />
+            <span className="truncate">
+              {(popover.event.calendarId &&
+                calendarNames[popover.event.calendarId]) ||
+                "Calendar"}
+              {popover.event.calendarId &&
+                calendarAccounts &&
+                calendarAccounts[popover.event.calendarId] && (
+                  <span className="ml-1 text-muted-foreground">
+                    ({calendarAccounts[popover.event.calendarId]})
+                  </span>
+                )}
+            </span>
+          </div>
+          <div className="px-3 pb-3 mt-1.5 text-sm text-muted-foreground flex items-center gap-2">
+            <CalendarIcon className="h-2.5 w-2.5" />
+            <span>
+              {formatDisplayRange(
+                popover.event.startDate,
+                popover.event.endDate
+              )}
+            </span>
+          </div>
         </div>
       )}
 

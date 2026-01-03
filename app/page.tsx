@@ -749,7 +749,7 @@ export default function HomePage() {
                       onValueChange={setCreateCalendarId}
                       disabled={createSubmitting}
                     >
-                      <SelectTrigger className="w-full border-0 bg-transparent px-0 py-1 h-auto shadow-none focus:ring-0">
+                      <SelectTrigger className="w-full border-0 bg-transparent px-0 py-1 h-auto shadow-none focus:ring-0 justify-start gap-1">
                         <SelectValue placeholder="Select a calendar" />
                       </SelectTrigger>
                       <SelectContent>
