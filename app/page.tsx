@@ -20,6 +20,8 @@ import {
   RefreshCcw,
   Settings,
   X,
+  Clock,
+  Calendar as CalendarIcon,
 } from "lucide-react";
 
 type CalendarListItem = {
@@ -70,6 +72,8 @@ export default function HomePage() {
   const [createSubmitting, setCreateSubmitting] = useState<boolean>(false);
   const [createError, setCreateError] = useState<string>("");
   const createDateFromDayClick = useRef<string | null>(null);
+  const startDateInputRef = useRef<HTMLInputElement | null>(null);
+  const endDateInputRef = useRef<HTMLInputElement | null>(null);
   const preferencesLoaded = useRef<boolean>(false);
   const writableCalendars = useMemo(() => {
     const canWrite = new Set(["owner", "writer"]);
@@ -637,11 +641,13 @@ export default function HomePage() {
                   <X className="h-4 w-4" />
                 </button>
               </div>
-              <div className="px-4 pt-2 pb-4 space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Title</label>
+              <div className="px-4 pt-2 pb-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-muted-foreground">
+                    <Plus className="h-4 w-4" />
+                  </div>
                   <input
-                    className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                    className="flex-1 border-0 bg-transparent px-0 py-1 text-sm focus:outline-none focus:ring-0 placeholder:text-muted-foreground"
                     placeholder="Event title"
                     value={createTitle}
                     onChange={(e) => setCreateTitle(e.target.value)}
@@ -649,106 +655,142 @@ export default function HomePage() {
                     autoFocus
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Date</label>
-                  <input
-                    type="date"
-                    className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                    value={createStartDate}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setCreateStartDate(v);
-                      if (
-                        createHasEndDate &&
-                        createEndDate &&
-                        v &&
-                        createEndDate < v
-                      ) {
-                        setCreateEndDate(v);
-                      }
-                    }}
-                    disabled={createSubmitting}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={createHasEndDate}
-                      onChange={(e) => {
-                        const on = e.target.checked;
-                        setCreateHasEndDate(on);
-                        if (on && !createEndDate)
-                          setCreateEndDate(createStartDate);
-                        if (!on) setCreateEndDate("");
-                      }}
-                      disabled={createSubmitting}
-                    />
-                    <span className="font-medium">Add end date</span>
-                  </label>
-                  {createHasEndDate && (
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-medium">End date</label>
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-muted-foreground">
+                    <CalendarIcon className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 flex items-center justify-between">
+                    <div className="flex items-center">
                       <input
+                        ref={startDateInputRef}
                         type="date"
-                        className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                        value={createEndDate}
-                        min={createStartDate || undefined}
-                        onChange={(e) => setCreateEndDate(e.target.value)}
+                        className="border-0 bg-transparent px-0 py-1 text-sm focus:outline-none focus:ring-0 w-24 [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+                        value={createStartDate}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setCreateStartDate(v);
+                          if (
+                            createHasEndDate &&
+                            createEndDate &&
+                            v &&
+                            createEndDate < v
+                          ) {
+                            setCreateEndDate(v);
+                          }
+                        }}
+                        onClick={(e) => {
+                          e.currentTarget.showPicker?.();
+                          e.currentTarget.focus();
+                        }}
                         disabled={createSubmitting}
                       />
-                      <div className="text-xs text-muted-foreground">
-                        End date is inclusive (we’ll convert it correctly for
-                        Google Calendar).
-                      </div>
+                      {createHasEndDate && (
+                        <>
+                          <span className="text-muted-foreground">–</span>
+                          <input
+                            ref={endDateInputRef}
+                            type="date"
+                            className="border-0 bg-transparent px-0 py-1 text-sm focus:outline-none focus:ring-0 ml-2 [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+                            value={createEndDate}
+                            min={createStartDate || undefined}
+                            onChange={(e) => setCreateEndDate(e.target.value)}
+                            onClick={(e) => {
+                              e.currentTarget.showPicker?.();
+                              e.currentTarget.focus();
+                            }}
+                            disabled={createSubmitting}
+                          />
+                        </>
+                      )}
                     </div>
-                  )}
+                    {createHasEndDate ? (
+                      <button
+                        type="button"
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                        onClick={() => {
+                          setCreateHasEndDate(false);
+                          setCreateEndDate("");
+                        }}
+                        disabled={createSubmitting}
+                      >
+                        Remove
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                        onClick={() => {
+                          setCreateHasEndDate(true);
+                          if (!createEndDate) setCreateEndDate(createStartDate);
+                        }}
+                        disabled={createSubmitting}
+                      >
+                        Add end date
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Calendar</label>
-                  <Select
-                    value={createCalendarId}
-                    onValueChange={setCreateCalendarId}
-                    disabled={createSubmitting}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a calendar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {writableCalendars.length > 0
-                        ? writableAccountsWithCalendars.map(
-                            ({ accountId, email, list }) => (
-                              <SelectGroup key={accountId || email}>
-                                <SelectLabel>
-                                  {email && email.length
-                                    ? email
-                                    : accountId || "Account"}
-                                </SelectLabel>
-                                {list.map((c) => (
-                                  <SelectItem key={c.id} value={c.id}>
-                                    {c.summary}
-                                  </SelectItem>
-                                ))}
-                              </SelectGroup>
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
+                    {createCalendarId && calendarColors[createCalendarId] ? (
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{
+                          backgroundColor: calendarColors[createCalendarId],
+                        }}
+                      />
+                    ) : (
+                      <div className="w-3 h-3 rounded-full bg-muted" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <Select
+                      value={createCalendarId}
+                      onValueChange={setCreateCalendarId}
+                      disabled={createSubmitting}
+                    >
+                      <SelectTrigger className="w-full border-0 bg-transparent px-0 py-1 h-auto shadow-none focus:ring-0">
+                        <SelectValue placeholder="Select a calendar" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {writableCalendars.length > 0
+                          ? writableAccountsWithCalendars.map(
+                              ({ accountId, email, list }) => (
+                                <SelectGroup key={accountId || email}>
+                                  <SelectLabel>
+                                    {email && email.length
+                                      ? email
+                                      : accountId || "Account"}
+                                  </SelectLabel>
+                                  {list.map((c) => (
+                                    <SelectItem key={c.id} value={c.id}>
+                                      {c.summary}
+                                    </SelectItem>
+                                  ))}
+                                </SelectGroup>
+                              )
                             )
-                          )
-                        : calendars.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>
-                              {(c.accountEmail ? `${c.accountEmail} — ` : "") +
-                                c.summary}
-                            </SelectItem>
-                          ))}
-                    </SelectContent>
-                  </Select>
-                  {writableCalendars.length === 0 && calendars.length > 0 && (
-                    <div className="text-xs text-muted-foreground">
-                      No writable calendars found; creating may fail on
-                      read-only calendars.
-                    </div>
-                  )}
+                          : calendars.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {(c.accountEmail
+                                  ? `${c.accountEmail} — `
+                                  : "") + c.summary}
+                              </SelectItem>
+                            ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
+                {writableCalendars.length === 0 && calendars.length > 0 && (
+                  <div className="text-xs text-muted-foreground pl-8">
+                    No writable calendars found; creating may fail on read-only
+                    calendars.
+                  </div>
+                )}
                 {createError && (
-                  <div className="text-sm text-destructive">{createError}</div>
+                  <div className="text-sm text-destructive pl-8">
+                    {createError}
+                  </div>
                 )}
               </div>
               <div className="p-4 border-t flex items-center justify-end gap-2">
@@ -761,7 +803,11 @@ export default function HomePage() {
                 </Button>
                 <Button
                   onClick={onCreateEvent}
-                  disabled={createSubmitting || status !== "authenticated"}
+                  disabled={
+                    createSubmitting ||
+                    status !== "authenticated" ||
+                    !createTitle.trim()
+                  }
                 >
                   {createSubmitting ? "Creating…" : "Create"}
                 </Button>
