@@ -426,6 +426,7 @@ export function YearCalendar({
               ev: AllDayEvent;
             };
             const rowToSegs = new Map<number, Seg[]>();
+            const yearEndBoundary = `${year + 1}-01-01`;
             for (const ev of events) {
               // Clamp event dates to current year boundaries
               const clampedStart = clampDateToYear(ev.startDate, year, true);
@@ -433,7 +434,10 @@ export function YearCalendar({
               // Skip events entirely outside the year
               if (clampedStart >= clampedEnd) continue;
               const startIdx = dayIndexByKey.get(clampedStart);
-              const endIdxExclusive = dayIndexByKey.get(clampedEnd);
+              // Handle end date at year boundary (Jan 1 of next year = end of this year)
+              const endIdxExclusive = clampedEnd === yearEndBoundary
+                ? days.length
+                : dayIndexByKey.get(clampedEnd);
               if (startIdx == null || endIdxExclusive == null) continue;
               let segStart = startIdx;
               while (segStart < endIdxExclusive) {
@@ -525,6 +529,7 @@ export function YearCalendar({
             return bars;
           }, [
             events,
+            days,
             dayIndexByKey,
             gridDims.cols,
             cellSizePx,
