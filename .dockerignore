@@ -1,0 +1,56 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Build outputs
+.next
+out
+dist
+build
+
+# Testing
+coverage
+*.test.*
+__tests__
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Local configs
+.env.local
+.env.development
+.env.test
+
+# Documentation
+README.md
+VERCEL_SETUP.md
+*.md
+!prisma/*.md
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Misc
+*.log
+*.tmp
+.cache

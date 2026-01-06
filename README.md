@@ -171,6 +171,55 @@ After making these changes:
 
 **Important**: The "Send token securely" and "WebViews usage" alerts showing green checkmarks indicate those security measures are already correctly configured.
 
+## Production Setup (Docker + Traefik)
+
+For self-hosted deployment with Docker and Traefik reverse proxy:
+
+### 1. Clone and Configure
+
+```bash
+git clone https://github.com/frankwiersma/big-year.git
+cd big-year
+```
+
+### 2. Create Environment File
+
+Create `.env` in the project root:
+
+```env
+# PostgreSQL
+POSTGRES_PASSWORD=your-secure-password
+
+# Database connection
+DATABASE_URL=postgresql://yearcalendar:your-secure-password@postgres:5432/yearcalendar
+
+# NextAuth
+NEXTAUTH_URL=https://your-domain.com
+NEXTAUTH_SECRET=generate-with-openssl-rand-base64-32
+
+# Google OAuth
+GOOGLE_CLIENT_ID=your-google-oauth-client-id
+GOOGLE_CLIENT_SECRET=your-google-oauth-client-secret
+```
+
+### 3. Deploy
+
+```bash
+docker compose up -d --build
+```
+
+The `docker-compose.yml` includes:
+- PostgreSQL 15 database with health checks
+- Next.js app with automatic Prisma migrations
+- Traefik labels for reverse proxy integration
+
+### 4. Configure Google OAuth
+
+Add your production redirect URI in [Google Cloud Console](https://console.cloud.google.com/apis/credentials):
+```
+https://your-domain.com/api/auth/callback/google
+```
+
 ## Notes
 
 - Only all-day events are fetched: events with `start.date` (not `start.dateTime`) are included.
