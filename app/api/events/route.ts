@@ -8,6 +8,13 @@ export const dynamic = "force-dynamic";
 function startOfYearIso(year: number) {
   return new Date(Date.UTC(year, 0, 1)).toISOString();
 }
+
+// Fetch events starting 60 days before year to capture multi-day events that span into the year
+function fetchStartIso(year: number) {
+  const date = new Date(Date.UTC(year, 0, 1));
+  date.setUTCDate(date.getUTCDate() - 60);
+  return date.toISOString();
+}
 function endOfYearIso(year: number) {
   return new Date(Date.UTC(year + 1, 0, 1)).toISOString();
 }
@@ -54,7 +61,7 @@ export async function GET(req: Request) {
   const params = new URLSearchParams({
     singleEvents: "true",
     orderBy: "startTime",
-    timeMin: startOfYearIso(year),
+    timeMin: fetchStartIso(year), // Start 60 days before year to capture spanning events
     timeMax: endOfYearIso(year),
     maxResults: "2500",
   });

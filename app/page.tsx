@@ -50,6 +50,7 @@ export default function HomePage() {
   const [hiddenEventIds, setHiddenEventIds] = useState<string[]>([]);
   const [showHidden, setShowHidden] = useState<boolean>(false);
   const [showDaysOfWeek, setShowDaysOfWeek] = useState<boolean>(false);
+  const [hideBirthdays, setHideBirthdays] = useState<boolean>(true);
   const [createOpen, setCreateOpen] = useState<boolean>(false);
   const [createTitle, setCreateTitle] = useState<string>("");
   const [createStartDate, setCreateStartDate] = useState<string>("");
@@ -235,6 +236,9 @@ export default function HomePage() {
           if (data.showHidden !== undefined) {
             setShowHidden(data.showHidden);
           }
+          if (data.hideBirthdays !== undefined) {
+            setHideBirthdays(data.hideBirthdays);
+          }
           if (data.calendarColors !== undefined) {
             setCalendarColors(data.calendarColors);
           }
@@ -249,9 +253,15 @@ export default function HomePage() {
   }, [status]);
 
   const visibleEvents = useMemo(() => {
-    if (showHidden) return events;
-    return events.filter((e) => !hiddenEventIds.includes(e.id));
-  }, [events, hiddenEventIds, showHidden]);
+    let filtered = showHidden ? events : events.filter((e) => !hiddenEventIds.includes(e.id));
+    if (hideBirthdays) {
+      filtered = filtered.filter((e) => {
+        const title = (e.summary || '').toLowerCase();
+        return !title.includes('birthday') && !title.includes('is jarig');
+      });
+    }
+    return filtered;
+  }, [events, hiddenEventIds, showHidden, hideBirthdays]);
 
   useEffect(() => {
     if (status !== "authenticated") {
@@ -415,6 +425,7 @@ export default function HomePage() {
             hiddenEventIds,
             showDaysOfWeek,
             showHidden,
+            hideBirthdays,
             calendarColors,
           }),
         }).catch((err) => {
@@ -429,6 +440,7 @@ export default function HomePage() {
     hiddenEventIds,
     showDaysOfWeek,
     showHidden,
+    hideBirthdays,
     calendarColors,
   ]);
 
@@ -860,6 +872,17 @@ export default function HomePage() {
                               }
                             />
                             <span>Show days of week</span>
+                          </label>
+                          <label className="flex items-center gap-2 text-sm cursor-pointer hover:bg-accent p-2 rounded">
+                            <input
+                              type="checkbox"
+                              className="accent-foreground"
+                              checked={hideBirthdays}
+                              onChange={(e) =>
+                                setHideBirthdays(e.target.checked)
+                              }
+                            />
+                            <span>Hide birthdays</span>
                           </label>
                           {hiddenEventIds.length > 0 && (
                             <label className="flex items-center gap-2 text-sm cursor-pointer hover:bg-accent p-2 rounded">

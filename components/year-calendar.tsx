@@ -21,12 +21,29 @@ import {
 import { AllDayEvent, CalendarListItem } from "@/types/calendar";
 
 export type { AllDayEvent, CalendarListItem };
-function expandEventsToDateMap(events: AllDayEvent[]) {
+
+function clampDateToYear(dateStr: string, year: number, clampToStart: boolean): string {
+  const yearStart = `${year}-01-01`;
+  const yearEnd = `${year + 1}-01-01`; // exclusive end
+  if (clampToStart) {
+    return dateStr < yearStart ? yearStart : dateStr;
+  } else {
+    return dateStr > yearEnd ? yearEnd : dateStr;
+  }
+}
+
+function expandEventsToDateMap(events: AllDayEvent[], year: number) {
   const map = new Map<string, AllDayEvent[]>();
+  const yearStart = new Date(Date.UTC(year, 0, 1));
+  const yearEnd = new Date(Date.UTC(year + 1, 0, 1)); // exclusive
   for (const ev of events) {
     const start = new Date(ev.startDate + "T00:00:00Z");
     const end = new Date(ev.endDate + "T00:00:00Z"); // exclusive
-    for (let d = new Date(start); d < end; d.setUTCDate(d.getUTCDate() + 1)) {
+    // Clamp to year boundaries
+    const clampedStart = start < yearStart ? yearStart : start;
+    const clampedEnd = end > yearEnd ? yearEnd : end;
+    if (clampedStart >= clampedEnd) continue;
+    for (let d = new Date(clampedStart); d < clampedEnd; d.setUTCDate(d.getUTCDate() + 1)) {
       const local = new Date(
         Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
       );
@@ -164,7 +181,7 @@ export function YearCalendar({
   showDaysOfWeek?: boolean;
 }) {
   const todayKey = formatDateKey(new Date());
-  const dateMap = useMemo(() => expandEventsToDateMap(events), [events]);
+  const dateMap = useMemo(() => expandEventsToDateMap(events, year), [events, year]);
   const days = useMemo(() => generateYearDays(year), [year]);
   const dayIndexByKey = useMemo(() => {
     const map = new Map<string, number>();
@@ -410,8 +427,13 @@ export function YearCalendar({
             };
             const rowToSegs = new Map<number, Seg[]>();
             for (const ev of events) {
-              const startIdx = dayIndexByKey.get(ev.startDate);
-              const endIdxExclusive = dayIndexByKey.get(ev.endDate);
+              // Clamp event dates to current year boundaries
+              const clampedStart = clampDateToYear(ev.startDate, year, true);
+              const clampedEnd = clampDateToYear(ev.endDate, year, false);
+              // Skip events entirely outside the year
+              if (clampedStart >= clampedEnd) continue;
+              const startIdx = dayIndexByKey.get(clampedStart);
+              const endIdxExclusive = dayIndexByKey.get(clampedEnd);
               if (startIdx == null || endIdxExclusive == null) continue;
               let segStart = startIdx;
               while (segStart < endIdxExclusive) {
@@ -507,6 +529,7 @@ export function YearCalendar({
             gridDims.cols,
             cellSizePx,
             calendarColors,
+            year,
           ])}
         </div>
       </div>

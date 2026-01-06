@@ -62,6 +62,7 @@ model UserPreferences {
   hiddenEventIds     String   @default("[]") // JSON array
   showDaysOfWeek    Boolean  @default(true)
   showHidden         Boolean  @default(false)
+  hideBirthdays     Boolean  @default(true) // Hide events with "birthday" or "is jarig" in title
   calendarColors    String   @default("{}") // JSON object
   updatedAt          DateTime @updatedAt
 }
